@@ -1,0 +1,192 @@
+rule all:
+    input:
+        "/home/s1095337/inlevermap/script_out/QCvoorTR1.txt",
+        "/home/s1095337/inlevermap/script_out/QCvoorTR2.txt",
+        "/home/s1095337/inlevermap/script_out/out_deelopdr2_trim1.fastq",
+        "/home/s1095337/inlevermap/script_out/out_deelopdr2_trim2.fastq",
+        "/home/s1095337/inlevermap/script_out/QCnaTR1.txt",
+        "/home/s1095337/inlevermap/script_out/QCnaTR2.txt",
+        "/home/s1095337/inlevermap/mapping/ref.1.bt2",
+        "/home/s1095337/inlevermap/mapping/ref.2.bt2",
+        "/home/s1095337/inlevermap/mapping/ref.3.bt2",
+        "/home/s1095337/inlevermap/mapping/ref.4.bt2",
+        "/home/s1095337/inlevermap/mapping/ref.rev.1.bt2",
+        "/home/s1095337/inlevermap/mapping/ref.rev.2.bt2",
+        "/home/s1095337/inlevermap/mapping/align.sam",
+        "/home/s1095337/inlevermap/mapping/align.bam",
+        "/home/s1095337/inlevermap/mapping/bam_sorted.bam",
+        "/home/s1095337/inlevermap/mapping/bam_sorted.bam.bai",
+        "/home/s1095337/inlevermap/mapping/infected_consensus.fasta",
+        "/home/s1095337/inlevermap/mapping/infected_consensus.fasta.fai",
+        "/home/s1095337/inlevermap/mapping/align.mpileup",
+        "/home/s1095337/inlevermap/mapping/variantcall.bcf",
+        "/home/s1095337/inlevermap/mapping/variantcall.vcf",
+        "/home/s1095337/inlevermap/mapping/consensus.fq",
+        "/home/s1095337/inlevermap/script_out/deelopdr6.txt"
+
+rule help:
+    run:
+        print("---Functie---\n")
+        print("De pipeline heeft een aantal functies.\nEr wordt een Quality control uitgevoerd op fastq bestanden.")
+        print("De reads in de fastq file worden getrimd.")
+        print("Deze getrimde reads worden gebruikt om een alignment te maken.")
+        print("Ook wordt er een variantenlijst en een consensus-sequentie gemaakt.")
+        print("De analyses zijn allemaal geautomatiseerd.")
+        print("\n---Aanroepen---\n\nDe pipeline kan op meerdere manieren worden aangeroepen:")
+        print("i.  De hele pipline kan worden aangeroepen, alle rules zullen automatisch worden uitgevoerd.")
+        print("ii. De pipeline kan per rule worden aangeroepen.")
+        print("\n---Voorbeeld---\n\ni. snakemake --snakefile Snakefile_s1095337")
+        print("ii. snakemake --snakefile Snakefile_s1095337 QC\n")
+        print("---Overzicht naamgeving---\n")
+        print("---map---\t---bestanden---\nscript_out\tIn deze map staan de output bestanden van de java scripts in:")
+        print("\t\t-QCvoorTR1.txt\n\t\t-QCvoorTR2.txt\n\t\t-QCnaTR1.txt\n\t\t-QCnaTR2.txt\n\t\t-out_deelopdr2_trim1.fastq")
+        print("\t\t-out_deelopdr2_trim2.fastq\n\t\t-deelopdr6.txt")
+        print("\nmapping\t\tIn deze map staan de output bestanden van het alignen, sam/bam, consensus en varianten analyse.")
+        print("\t\t-align.bam\n\t\t-align.sam\n\t\t-align.mpileup\n\t\t-bam_sorted.bam\n\t\t-bam_sorted.bam.bai")
+        print("\t\t-consensus.fq\n\t\t-infected_consensus.fasta\n\t\t-infected_consensus.fasta.fai")
+        print("\t\t-ref.1.bt2\n\t\t-ref.2.bt2\n\t\t-ref.3.bt2\n\t\t-ref.4.bt2\n\t\t-ref.rev.1.bt2\n\t\t-ref.rev.2.bt2")
+        print("\t\t-variantcall.bcf\n\t\t-variantcall.vcf")
+
+rule QC:
+    input:
+        file_ni1="/home/bngp/reads/bngsa_nietinfected_1.fastq",
+        file_ni2="/home/bngp/reads/bngsa_nietinfected_2.fastq"
+    output:
+        out_file1="/home/s1095337/inlevermap/script_out/QCvoorTR1.txt",
+        out_file2="/home/s1095337/inlevermap/script_out/QCvoorTR2.txt"
+    shell:
+        "java -jar /home/s1095337/inlevermap/Bnextgen_1.jar {input.file_ni1} {input.file_ni2} {output.out_file1} {output.out_file2}"
+        
+rule Trimmen_ser: 
+    input:
+        file1="/home/bngp/reads/bngsa_nietinfected_1.fastq",
+        file2="/home/bngp/reads/bngsa_nietinfected_2.fastq"
+    output:
+        out_file1="/home/s1095337/inlevermap/script_out/out_deelopdr2_trim1.fastq",
+        out_file2="/home/s1095337/inlevermap/script_out/out_deelopdr2_trim2.fastq"
+    shell:
+        "java -jar /home/s1095337/inlevermap/Bnextgen_2.jar {input.file1} {input.file2} {output.out_file1} {output.out_file2}"
+    
+rule QCnaTrimmen:
+    input:
+        trimmed1=rules.Trimmen_ser.output.out_file1,
+        trimmed2=rules.Trimmen_ser.output.out_file2
+    output:
+        out_file1="/home/s1095337/inlevermap/script_out/QCnaTR1.txt",
+        out_file2="/home/s1095337/inlevermap/script_out/QCnaTR2.txt"
+    shell:
+        "java -jar /home/s1095337/inlevermap/Bnextgen_1.jar {input.trimmed1} {input.trimmed2} {output.out_file1} {output.out_file2}"
+    
+rule bowtie_index:
+    input:
+        "/home/bngp/refgenome/infected_consensus.fasta"
+    params:
+        file="/home/s1095337/inlevermap/mapping/ref"
+    output:
+        ref1="/home/s1095337/inlevermap/mapping/ref.1.bt2",
+        ref2="/home/s1095337/inlevermap/mapping/ref.2.bt2",
+        ref3="/home/s1095337/inlevermap/mapping/ref.3.bt2",
+        ref4="/home/s1095337/inlevermap/mapping/ref.4.bt2",
+        outrev1="/home/s1095337/inlevermap/mapping/ref.rev.1.bt2",
+        outrev2="/home/s1095337/inlevermap/mapping/ref.rev.2.bt2"
+    shell:
+        "bowtie2-build {input} {params.file}"
+
+rule bowtie_align:
+    input:
+        trimmed1=rules.Trimmen_ser.output.out_file1,
+        trimmed2=rules.Trimmen_ser.output.out_file2,
+        ref1="/home/s1095337/inlevermap/mapping/ref.1.bt2",
+        ref2="/home/s1095337/inlevermap/mapping/ref.2.bt2",
+        ref3="/home/s1095337/inlevermap/mapping/ref.3.bt2",
+        ref4="/home/s1095337/inlevermap/mapping/ref.4.bt2",
+        outrev1="/home/s1095337/inlevermap/mapping/ref.rev.1.bt2",
+        outrev2="/home/s1095337/inlevermap/mapping/ref.rev.2.bt2"
+    params:
+        file="/home/s1095337/inlevermap/mapping/ref"
+    output:
+        out="/home/s1095337/inlevermap/mapping/align.sam"
+    shell:
+        "bowtie2 -x {params.file} -1 {input.trimmed1} -2 {input.trimmed2} > {output}"
+
+rule sambam:
+    input: 
+        sam_file=rules.bowtie_align.output.out
+    output:
+        bam_file="/home/s1095337/inlevermap/mapping/align.bam"
+    shell:
+        "samtools view -Sb {input.sam_file} > {output.bam_file}"
+
+rule bamsorted:
+    input: 
+        bam_file=rules.sambam.output.bam_file
+    output:
+        bam_sort="/home/s1095337/inlevermap/mapping/bam_sorted.bam"
+    shell:
+        "samtools sort {input.bam_file} > {output.bam_sort}"
+        
+rule index:
+    input:
+        bam_sort=rules.bamsorted.output.bam_sort
+    output:
+        idx_bam="/home/s1095337/inlevermap/mapping/bam_sorted.bam.bai"
+    shell:
+        "samtools index {input.bam_sort} {output.idx_bam}"
+
+rule refcp:
+    input:
+        ref="/home/bngp/refgenome/infected_consensus.fasta"
+    output:
+        ref="/home/s1095337/inlevermap/mapping/infected_consensus.fasta"
+    shell:
+        "cp {input.ref} {output.ref}"
+        
+rule index2:
+    input:
+        ref=rules.refcp.output.ref
+    output:
+        ref_idx="/home/s1095337/inlevermap/mapping/infected_consensus.fasta.fai"
+    shell:
+        "samtools faidx {input.ref}"
+
+rule bamPile:
+    input:
+        ref=rules.refcp.output.ref,
+        sorted_bam=rules.bamsorted.output.bam_sort
+    output:
+        pileup="/home/s1095337/inlevermap/mapping/align.mpileup"
+    shell:
+        "samtools mpileup -f {input.ref} {input.sorted_bam} > {output.pileup}"
+        
+rule pileBcf:
+    input:
+        ref=rules.refcp.output.ref,
+        bam_sort=rules.bamsorted.output.bam_sort
+    output:
+        variant="/home/s1095337/inlevermap/mapping/variantcall.bcf"
+    shell:
+        "samtools mpileup -uf {input.ref} {input.bam_sort} > {output.variant}"
+        
+rule BcfVcf:
+    input:
+        bcf=rules.pileBcf.output.variant
+    output:
+        variant="/home/s1095337/inlevermap/mapping/variantcall.vcf"
+    shell:
+        "bcftools call -mv {input.bcf} > {output.variant}"
+        
+rule consensus:
+    input:
+        vcf=rules.BcfVcf.output.variant
+    output:
+        consensus="/home/s1095337/inlevermap/mapping/consensus.fq"
+    shell:
+        "bcftools call -c {rules.pileBcf.output.variant} | vcfutils.pl vcf2fq > {output.consensus}"
+
+rule indels:
+    input:
+        variant=rules.BcfVcf.output.variant
+    output:
+        indels="/home/s1095337/inlevermap/script_out/deelopdr6.txt"
+    shell:
+        "java -jar /home/s1095337/inlevermap/Bnextgen_6.jar {input.variant} {output.indels}"
